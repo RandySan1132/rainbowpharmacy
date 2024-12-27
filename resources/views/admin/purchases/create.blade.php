@@ -76,6 +76,7 @@
                         </div>
                     </div>
 
+
                     <!-- Medicine Table -->
                     <fieldset id="medicine-fieldset" disabled>
                         <div class="table-responsive">
