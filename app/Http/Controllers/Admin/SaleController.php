@@ -190,6 +190,28 @@ class SaleController extends Controller
                     ->orderBy('created_at', 'asc')
                     ->get();
 
+                // Log the purchases for debugging
+                Log::info('Purchases for product:', ['product_id' => $barCodeId, 'purchases' => $purchases]);
+
+                // ↓↓↓ Add this total stock check ↓↓↓
+                $availableStock = 0;
+                if ($saleBy === 'box') {
+                    $availableStock = $purchases->sum('quantity');
+                    Log::info('Available box stock:', ['product_id' => $barCodeId, 'available_stock' => $availableStock]);
+                    if ($availableStock < $quantity) {
+                        throw new \Exception("Not enough box stock for product: {$product->product_name}");
+                    }
+                } elseif ($saleBy === 'pill') {
+                    foreach ($purchases as $purchase) {
+                        $availableStock += ($purchase->quantity * $purchase->pill_amount) + $purchase->leftover_pills;
+                    }
+                    Log::info('Available pill stock:', ['product_id' => $barCodeId, 'available_stock' => $availableStock]);
+                    if ($availableStock < $quantity) {
+                        throw new \Exception("Not enough pill stock for product: {$product->product_name}");
+                    }
+                }
+                // ↑↑↑ End of added check ↑↑↑
+
                 if ($purchases->isEmpty()) {
                     throw new \Exception("No available stock for product: {$product->product_name}");
                 }
@@ -210,6 +232,7 @@ class SaleController extends Controller
                         }
 
                         $deductedBoxes = min($currentBoxes, $remainingQuantity);
+                        Log::info('Deducting boxes:', ['purchase_id' => $purchase->id, 'deducted_boxes' => $deductedBoxes]);
                         $purchase->quantity = $currentBoxes - $deductedBoxes;
                         $purchase->save();
 
@@ -219,36 +242,61 @@ class SaleController extends Controller
                     } elseif ($saleBy === 'pill') {
                         // Use a while loop to allow multiple unbox attempts from the same purchase
                         while ($remainingQuantity > 0 && ($purchase->quantity > 0 || $purchase->leftover_pills > 0)) {
-                            // Unbox if leftover_pills is zero but there is at least one box left
-                            if ($purchase->leftover_pills <= 0 && (int) $purchase->quantity > 0) {
-                                $purchase->quantity = (int)$purchase->quantity - 1;
+                            Log::info('Before deduction:', [
+                                'purchase_id' => $purchase->id,
+                                'remainingQuantity' => $remainingQuantity,
+                                'leftover_pills' => $purchase->leftover_pills,
+                                'purchase_boxes' => $purchase->quantity
+                            ]);
+
+                            // Check if leftover pills alone can fulfill the need
+                            if ($purchase->leftover_pills >= $remainingQuantity) {
+                                $deductedPills = $remainingQuantity;
+                                $purchase->leftover_pills -= $deductedPills;
+                                $purchase->save();
+
+                                $remainingQuantity = 0;
+                                $totalDeductedQuantity += $deductedPills;
+                                Log::info('Deducted pills without unboxing:', [
+                                    'purchase_id' => $purchase->id,
+                                    'deducted_pills' => $deductedPills,
+                                    'remainingQuantity' => $remainingQuantity,
+                                    'leftover_pills' => $purchase->leftover_pills,
+                                    'purchase_boxes' => $purchase->quantity
+                                ]);
+                                break;  // Move on once done
+                            }
+
+                            // If leftover pills are not enough, use them first
+                            if ($purchase->leftover_pills > 0) {
+                                $deductedPills = $purchase->leftover_pills;
+                                $purchase->leftover_pills = 0;
+                                $purchase->save();
+
+                                $remainingQuantity -= $deductedPills;
+                                $totalDeductedQuantity += $deductedPills;
+                                Log::info('Partially used leftover pills:', [
+                                    'purchase_id' => $purchase->id,
+                                    'deducted_pills' => $deductedPills,
+                                    'remainingQuantity' => $remainingQuantity,
+                                    'purchase_boxes' => $purchase->quantity
+                                ]);
+                            }
+
+                            // Unbox if leftover pills are not sufficient
+                            if ($remainingQuantity > 0 && $purchase->quantity > 0) {
+                                $purchase->quantity -= 1;
                                 $purchase->leftover_pills = $purchase->pill_amount;
                                 $purchase->save();
+
+                                Log::info('Unboxed a box:', [
+                                    'purchase_id' => $purchase->id,
+                                    'new_quantity' => $purchase->quantity,
+                                    'new_leftover_pills' => $purchase->leftover_pills
+                                ]);
+                            } else {
+                                break; // No more boxes left
                             }
-
-                            // Prevent infinite looping
-                            if ($purchase->pill_amount <= 0) {
-                                Log::error('Invalid pill_amount for purchase ID: ' . $purchase->id);
-                                break;
-                            }
-
-                            while ($purchase->leftover_pills >= $purchase->pill_amount && $purchase->pill_amount > 0) {
-                                $purchase->quantity++;
-                                $purchase->leftover_pills -= $purchase->pill_amount;
-                            }
-
-                            // If no leftover after unboxing, move on
-                            if ($purchase->leftover_pills <= 0) {
-                                break;
-                            }
-
-                            // Deduct as many pills as possible
-                            $deductedPills = min($purchase->leftover_pills, $remainingQuantity);
-                            $purchase->leftover_pills -= $deductedPills;
-                            $purchase->save();
-
-                            $remainingQuantity -= $deductedPills;
-                            $totalDeductedQuantity += $deductedPills;
                         }
                     }
                 }
@@ -403,15 +451,12 @@ class SaleController extends Controller
                     if ($purchase) {
                         if ($purchaseSale->sale_by === 'box') {
                             $purchase->quantity += $purchaseSale->quantity;
-                        } elseif ($purchaseSale->sale_by === 'pill') {
+                        } else {
                             $purchase->leftover_pills += $purchaseSale->quantity;
                             while ($purchase->leftover_pills >= $purchase->pill_amount) {
                                 $purchase->quantity += 1;
                                 $purchase->leftover_pills -= $purchase->pill_amount;
                             }
-                        } else {
-                            // For products without sale_by, revert entire quantity as single units
-                            $purchase->quantity += $purchaseSale->quantity;
                         }
                         $purchase->save();
                         $this->updateStockStatus($purchase->bar_code_id);

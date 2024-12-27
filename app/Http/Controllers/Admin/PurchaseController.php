@@ -109,17 +109,6 @@ class PurchaseController extends Controller
             if (count($productIds) !== count(array_unique($productIds))) {
                 throw new \Exception('Duplicate products are not allowed in a single purchase.');
             }
-
-// Handle invoice image upload
-$invoiceImagePath = null;
-if ($request->hasFile('invoice_image')) {
-    // Store the file in 'public/storage/purchases' (mapped to 'storage/app/public/purchases')
-    $invoiceImagePath = $request->file('invoice_image')->storeAs(
-        'public/purchases', // This will save the file in storage/app/public/purchases
-        $request->file('invoice_image')->getClientOriginalName()
-    );
-}
-
     
             foreach ($productIds as $index => $productId) {
                 // Fetch product details from the bar_code_data table
@@ -184,7 +173,6 @@ if ($request->hasFile('invoice_image')) {
                     'invoice_no' => $request->invoice_no,
                     'date' => $request->date,
                     'total_purchase_price' => $request->total_purchase_price[$index] ?? 0,
-                    'invoice_image' => $invoiceImagePath ? basename($invoiceImagePath) : null, // Ensure this line is present
                 ]);
     
                 // Create entries in the box_inventories table only for medicine products
@@ -211,12 +199,10 @@ if ($request->hasFile('invoice_image')) {
     public function edit($id)
     {
         $purchase = Purchase::with('purchaseDetails')->findOrFail($id);
-        $invoice_no = $purchase->purchaseDetails->first()->invoice_no ?? '';
-        $purchases = Purchase::whereHas('purchaseDetails', function ($query) use ($invoice_no) {
-            $query->where('invoice_no', $invoice_no);
-        })->get();
+        $suppliers = Supplier::all();
+        $categories = Category::all();
 
-        return view('admin.purchases.edit', compact('purchases'));
+        return view('admin.purchases.edit', compact('purchase', 'suppliers', 'categories'));
     }
 
     public function update(Request $request, Purchase $purchase)
@@ -512,10 +498,7 @@ if ($request->hasFile('invoice_image')) {
 
         return response()->json(['success' => false, 'message' => 'Product not found.'], 404);
     }
-    public function viewByInvoice($invoice_no)
-    {
-        $purchases = Purchase::where('invoice_no', $invoice_no)->get();
-        return view('admin.purchases.view', compact('purchases'));
-    }
+
 }
+
 
