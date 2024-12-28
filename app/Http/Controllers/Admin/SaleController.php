@@ -449,6 +449,9 @@ class SaleController extends Controller
     
     public function destroy($invoice_id)
     {
+        // Increase the maximum execution time
+        set_time_limit(300); // Set to 5 minutes
+
         DB::beginTransaction();
     
         try {
