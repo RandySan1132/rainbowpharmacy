@@ -462,44 +462,33 @@ class SaleController extends Controller
     
             Log::info('Receipt found: ' . $receipt->id);
     
-            $sales = Sale::where('invoice_id', $invoice_id)->get();
-    
-            if ($sales->isEmpty()) {
-                throw new \Exception("No sales found for invoice_id: {$invoice_id}");
-            }
-    
-            Log::info('Sales found for invoice_id: ' . $invoice_id);
-    
-            foreach ($sales as $sale) {
-                $purchaseSales = PurchaseSale::where('sale_id', $sale->id)->get();
-                Log::info('Found ' . $purchaseSales->count() . ' pivot entries for sale_id: ' . $sale->id);
-    
-                foreach ($purchaseSales as $purchaseSale) {
-                    $purchase = Purchase::find($purchaseSale->purchase_id);
-                    if ($purchase) {
-                        if ($purchaseSale->sale_by === 'box') {
-                            $purchase->quantity += $purchaseSale->quantity;
-                        } else {
-                            $purchase->leftover_pills += $purchaseSale->quantity;
-                            while ($purchase->leftover_pills >= $purchase->pill_amount) {
-                                $purchase->quantity += 1;
-                                $purchase->leftover_pills -= $purchase->pill_amount;
+            Sale::where('invoice_id', $invoice_id)->chunk(100, function($sales) {
+                foreach ($sales as $sale) {
+                    Log::info("Processing sale_id: {$sale->id}");
+                    PurchaseSale::where('sale_id', $sale->id)->chunk(100, function($purchaseSales) {
+                        foreach ($purchaseSales as $purchaseSale) {
+                            $purchase = Purchase::find($purchaseSale->purchase_id);
+                            if ($purchase) {
+                                if ($purchaseSale->sale_by === 'box') {
+                                    $purchase->quantity += $purchaseSale->quantity;
+                                } else {
+                                    $purchase->leftover_pills += $purchaseSale->quantity;
+                                    while ($purchase->leftover_pills >= $purchase->pill_amount) {
+                                        $purchase->quantity += 1;
+                                        $purchase->leftover_pills -= $purchase->pill_amount;
+                                    }
+                                }
+                                $purchase->save();
+                                $this->updateStockStatus($purchase->bar_code_id);
                             }
                         }
-                        $purchase->save();
-                        $this->updateStockStatus($purchase->bar_code_id);
-                    }
+                        PurchaseSale::whereIn('id', $purchaseSales->pluck('id'))->delete();
+                    });
+                    $sale->forceDelete();
+                    Log::info("Force-deleted sale_id: {$sale->id}");
                 }
+            });
     
-                // Remove pivot entries
-                PurchaseSale::where('sale_id', $sale->id)->delete();
-    
-                // Force delete the sale row
-                $sale->forceDelete();
-                Log::info('Force-deleted sale_id: ' . $sale->id);
-            }
-    
-            // Delete the receipt
             $receipt->delete();
     
             DB::commit();
