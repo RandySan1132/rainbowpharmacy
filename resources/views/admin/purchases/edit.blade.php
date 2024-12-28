@@ -26,11 +26,11 @@
     <div class="col-sm-12">
         <div class="card">
             <div class="card-body">
-                <h3 class="khmer-text">លេខ Invoice: {{ $purchases->first()->purchaseDetails->first()->invoice_no ?? '' }}</h3>
-                @if($purchases->first()->purchaseDetails->first()->invoice_image)
+                <h3 class="khmer-text">លេខ Invoice: {{ $purchase->purchaseDetails->first()->invoice_no ?? '' }}</h3>
+                @if($purchase->purchaseDetails->first()->invoice_image)
                     <div class="mb-3">
                         <label class="khmer-text">រូបថត Invoice:</label>
-                        <img src="{{ asset('storage/purchases/' . $purchases->first()->purchaseDetails->first()->invoice_image) }}" alt="Invoice Image" class="img-thumbnail" style="max-width: 300px;" id="invoiceImage">
+                        <img src="{{ asset('storage/purchases/' . $purchase->purchaseDetails->first()->invoice_image) }}" alt="Invoice Image" class="img-thumbnail" style="max-width: 300px;" id="invoiceImage">
                     </div>
                 @endif
                 <div class="table-responsive">
@@ -44,14 +44,12 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($purchases as $purchase)
                             <tr>
                                 <td>{{ $purchase->barCodeData->product_name ?? 'N/A' }}</td>
                                 <td>{{ $purchase->cost_price }}</td>
                                 <td>{{ $purchase->quantity }}</td>
                                 <td>{{ $purchase->expiry_date }}</td>
                             </tr>
-                            @endforeach
                         </tbody>
                     </table>
                 </div>
