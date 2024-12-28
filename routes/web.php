@@ -19,7 +19,8 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SaleController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\ReceiptController; // Ensure this import is present
-
+use App\Services\TelegramService;
+use App\Models\BarCodeData;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,6 +85,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function(){
     Route::delete('/purchases/{id}', [PurchaseController::class, 'destroy'])->name('purchases.destroy');
 
     Route::get('settings',[SettingController::class,'index'])->name('settings');
+    Route::put('/settings', [SettingController::class, 'update'])->name('app_settings.update');
 
     Route::get('/reload-notifications', [App\Http\Controllers\Admin\NotificationController::class, 'reloadNotifications'])->name('reload-notifications');
 
@@ -107,6 +109,15 @@ Route::middleware(['auth'])->prefix('admin')->group(function(){
 
 // Add the test route outside the auth middleware group
 Route::get('/test-receipt/{sale_id}', [ReceiptController::class, 'testReceipt'])->name('test.receipt');
+
+Route::get('/test-telegram', function () {
+    $product = BarCodeData::first(); // Get the first product for testing
+    if ($product) {
+        TelegramService::sendLowStockAlert($product, 5); // Send a low stock alert for testing
+        return 'Test message sent to Telegram!';
+    }
+    return 'No product found for testing.';
+})->name('test.telegram');
 
 Route::middleware(['guest'])->prefix('admin')->group(function () {
     Route::get('',[DashboardController::class,'Index']);

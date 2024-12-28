@@ -19,6 +19,7 @@ use App\Notifications\LowStockNotification;
 use Spatie\Permission\Models\Role; // Ensure you have this import at the top
 use App\Models\BoxInventory; // Ensure you have this import at the top
 use Carbon\Carbon; // Ensure you have this import
+use App\Services\TelegramService; // Ensure you have this import at the top
 
 class PurchaseController extends Controller
 {
@@ -198,12 +199,20 @@ class PurchaseController extends Controller
 
     public function edit($id)
     {
-        $purchase = Purchase::with('purchaseDetails')->findOrFail($id);
-        $suppliers = Supplier::all();
-        $categories = Category::all();
-
-        return view('admin.purchases.edit', compact('purchase', 'suppliers', 'categories'));
+        try {
+            Log::info("Edit method called for purchase ID: {$id}");
+            $purchase = Purchase::with('purchaseDetails')->findOrFail($id);
+            $suppliers = Supplier::all();
+            $categories = Category::all();
+            Log::info("Purchase found: ID = {$purchase->id}");
+    
+            return view('admin.purchases.edit', compact('purchase', 'suppliers', 'categories'));
+        } catch (\Exception $e) {
+            Log::error("Error in edit method for purchase ID {$id}: {$e->getMessage()}");
+            return redirect()->route('admin.purchases.index')->with('error', 'Failed to load purchase details.');
+        }
     }
+
 
     public function update(Request $request, Purchase $purchase)
     {
@@ -384,6 +393,13 @@ class PurchaseController extends Controller
                                      ->with(['barCodeData', 'category', 'supplier'])
                                      ->get();
 
+                // Send Telegram notification for expired products
+                foreach ($purchases as $purchase) {
+                    if ($purchase->expiry_date < $now) {
+                        TelegramService::sendExpiredProductAlert($purchase);
+                    }
+                }
+
                 $dataTable = DataTables::of($purchases)
                     ->addColumn('product', function ($purchase) {
                         $product = $purchase->barCodeData;
@@ -454,11 +470,18 @@ class PurchaseController extends Controller
             $product->in_stock = $totalStock > 0 ? 1 : 0; // Ensure it's set to 1 or 0
             $product->save();
 
+            // Log stock status
+            Log::info("Stock status for product {$product->product_name}: {$totalStock}");
+
             // If stock is 5 or below, create a notification
             if ($totalStock <= 5) {
                 // Notify users with the 'super-admin' role
                 $admins = User::role('super-admin')->get();
                 Notification::send($admins, new LowStockNotification($product, $totalStock));
+
+                // Log low stock notification
+                Log::info("Sending low stock alert for product {$product->product_name}");
+                TelegramService::sendLowStockAlert($product, $totalStock);
             }
         }
     }
@@ -477,6 +500,9 @@ class PurchaseController extends Controller
             // Update stock status if needed (e.g., mark as out of stock)
             BarCodeData::where('id', $purchase->bar_code_id)
                 ->update(['in_stock' => 0]); // Make sure 'in_stock' exists as a column if using it
+            // Log out of stock notification
+            Log::info("Sending out of stock alert for product {$purchase->barCodeData->product_name}");
+            TelegramService::sendOutOfStockAlert($purchase->bar_code_id);
         } else {
             // Mark as in stock if quantity is above 0
             BarCodeData::where('id', $purchase->bar_code_id)

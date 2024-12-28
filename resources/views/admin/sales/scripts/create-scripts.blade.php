@@ -78,6 +78,7 @@
             let product = products.find(p => p.id == productId);
             if (!product) return;
 
+
             // Generate a unique key for each cart item based on product ID and sale type
             let cartKey = `${productId}_${saleBy}`;
 
@@ -318,11 +319,17 @@
             if (item.sale_by === 'box' && item.quantity > product.box_stock) {
                 alert('Not enough box stock available.');
                 item.quantity = product.box_stock;
+                if (item.quantity <= 0) {
+                    delete cart[cartKey]; // Remove the item from the cart if quantity is zero
+                }
             }
 
             // if (item.sale_by === 'pill' && item.quantity > totalPillStock) {
             //     alert('Not enough pill stock available.');
             //     item.quantity = totalPillStock;
+            //     if (item.quantity <= 0) {
+            //         delete cart[cartKey]; // Remove the item from the cart if quantity is zero
+            //     }
             // }
         }
 

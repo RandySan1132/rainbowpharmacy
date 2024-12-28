@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\LowStockNotification;
 use Illuminate\Support\Facades\DB; // <-- Add this line
 use Spatie\Permission\Models\Role; // Ensure you have this import at the top
+use App\Services\TelegramService; // Ensure you have this import at the top
 
 class ProductController extends Controller
 {
@@ -374,6 +375,9 @@ public function updateStockStatus($barCodeId)
         $product->in_stock = $totalStock > 0;
         $product->save();
 
+        // Log stock status
+        Log::info("Stock status for product {$product->product_name}: {$totalStock}");
+
         // If stock is 5 or below and notification has not been sent recently
         if ($totalStock <= 5) {
             $shouldNotify = is_null($product->stock_notified_at) ||
@@ -387,6 +391,11 @@ public function updateStockStatus($barCodeId)
                 // Update the notification timestamp to prevent duplicate notifications
                 $product->stock_notified_at = now();
                 $product->save();
+
+                // Log low stock notification
+                Log::info("Sending low stock alert for product {$product->product_name}");
+                // Send Telegram notification
+                TelegramService::sendLowStockAlert($product, $totalStock);
             }
         }
     }
@@ -406,9 +415,17 @@ protected function checkAndUpdateStockStatus($barCodeId)
         $product->in_stock = $totalQuantity > 0; // Mark as in stock if quantity > 0
         $product->save();
 
+        // Log stock status
+        Log::info("Stock status for product {$product->product_name}: {$totalQuantity}");
+
         // Notify if stock is low (5 or below)
         if ($totalQuantity > 0 && $totalQuantity <= 5) {
             Notification::send(auth()->user(), new LowStockNotification($product, $totalQuantity));
+
+            // Log low stock notification
+            Log::info("Sending low stock alert for product {$product->product_name}");
+            // Send Telegram notification
+            TelegramService::sendLowStockAlert($product, $totalQuantity);
         }
     }
 }

@@ -23,6 +23,24 @@
 </div>
 
 <div class="row">
+    <div class="col-12">
+        <form action="{{ route('app_settings.update') }}" method="POST">
+            @csrf
+            @method('PUT')
+            <div class="form-group">
+                <label for="telegram_bot_token">Telegram Bot Token</label>
+                <input type="text" name="telegram_bot_token" id="telegram_bot_token" class="form-control" value="{{ setting('telegram_bot_token') }}">
+            </div>
+            <div class="form-group">
+                <label for="telegram_chat_id">Telegram Chat ID</label>
+                <input type="text" name="telegram_chat_id" id="telegram_chat_id" class="form-control" value="{{ setting('telegram_chat_id') }}">
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-12 text-right">
         <form action="{{ route('clear.log') }}" method="POST" class="d-inline">
             @csrf
