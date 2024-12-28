@@ -137,3 +137,35 @@ Route::middleware(['guest'])->prefix('admin')->group(function () {
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+Route::get('storage/invoices/{filename}', function ($filename) {
+    $path = storage_path('app/public/invoices/' . $filename);
+
+    if (!File::exists($path)) {
+        abort(404);
+    }
+
+    $file = File::get($path);
+    $type = File::mimeType($path);
+
+    $response = Response::make($file, 200);
+    $response->header("Content-Type", $type);
+
+    return $response;
+})->name('invoices.show');
+
+Route::get('storage/purchases/{filename}', function ($filename) {
+    $path = storage_path('app/public/purchases/' . $filename);
+
+    if (!File::exists($path)) {
+        abort(404);
+    }
+
+    $file = File::get($path);
+    $type = File::mimeType($path);
+
+    $response = Response::make($file, 200);
+    $response->header("Content-Type", $type);
+
+    return $response;
+})->name('purchases.show');

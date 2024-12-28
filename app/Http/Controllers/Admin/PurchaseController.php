@@ -20,6 +20,7 @@ use Spatie\Permission\Models\Role; // Ensure you have this import at the top
 use App\Models\BoxInventory; // Ensure you have this import at the top
 use Carbon\Carbon; // Ensure you have this import
 use App\Services\TelegramService; // Ensure you have this import at the top
+use Illuminate\Support\Facades\Storage; // Ensure you have this import at the top
 
 class PurchaseController extends Controller
 {
@@ -110,7 +111,16 @@ class PurchaseController extends Controller
             if (count($productIds) !== count(array_unique($productIds))) {
                 throw new \Exception('Duplicate products are not allowed in a single purchase.');
             }
-    
+
+            // Handle invoice image upload
+            if ($request->hasFile('invoice_image')) {
+                $invoiceImage = $request->file('invoice_image');
+                $invoiceImagePath = $invoiceImage->store('purchases', 'public');
+                $invoiceImageFilename = basename($invoiceImagePath); // Extract the filename
+            } else {
+                $invoiceImageFilename = null;
+            }
+
             foreach ($productIds as $index => $productId) {
                 // Fetch product details from the bar_code_data table
                 $product = BarCodeData::findOrFail($productId);
@@ -120,7 +130,7 @@ class PurchaseController extends Controller
                 $pillAmount = ($categoryName === 'medicine' && $product->pill_amount !== null)
                     ? $product->pill_amount
                     : 0;
-    
+
                 // Log the values being set
                 Log::info('Creating purchase', [
                     'bar_code_id' => $product->id,
@@ -135,7 +145,7 @@ class PurchaseController extends Controller
                     'original_pill_amount' => $pillAmount,
                     'total_pill_amount' => ($pillAmount !== null) ? ($request->box_qty[$index] ?? 0) * $pillAmount : null,
                 ]);
-    
+
                 $expiryDateValue = $request->expiry_date[$index] ?? null;
                 $nearExpiryDateValue = $expiryDateValue
                     ? Carbon::parse($expiryDateValue)->subDays(7)->toDateString()
@@ -166,7 +176,7 @@ class PurchaseController extends Controller
                     'purchase_id' => $purchase->id,
                     'near_expiry_date' => $purchase->near_expiry_date,
                 ]);
-    
+
                 // Store invoice details in purchase_details table
                 PurchaseDetail::create([
                     'purchase_id' => $purchase->id,
@@ -174,8 +184,9 @@ class PurchaseController extends Controller
                     'invoice_no' => $request->invoice_no,
                     'date' => $request->date,
                     'total_purchase_price' => $request->total_purchase_price[$index] ?? 0,
+                    'invoice_image' => $invoiceImageFilename, // Store only the filename
                 ]);
-    
+
                 // Create entries in the box_inventories table only for medicine products
                 if ($product->category->name == 'medicine') {
                     for ($i = 0; $i < $purchase->quantity; $i++) {
@@ -185,17 +196,14 @@ class PurchaseController extends Controller
                         ]);
                     }
                 }
-    
+
                 // Update stock status for each product after creating BoxInventory
                 $this->updateStockStatus($product->id);
             }
         });
-    
+
         return redirect()->route('admin.purchases.index')->with('success', 'Purchase added successfully.');
     }
-    
-
-
 
     public function edit($id)
     {

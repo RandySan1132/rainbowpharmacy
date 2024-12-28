@@ -31,6 +31,11 @@
     <div class="col-sm-12">
         <div class="card">
             <div class="card-body custom-edit-service">
+                @if (session('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
+                    </div>
+                @endif
                 <form method="post" enctype="multipart/form-data" autocomplete="off" action="{{ route('purchases.store') }}">
                     @csrf
 
@@ -70,7 +75,8 @@
                             <div class="col-lg-4">
                                 <div class="form-group">
                                     <label class="khmer-text">រូបវិក័យបត្រ</label>
-                                    <input type="file" name="invoice_image" class="form-control" accept="image/*">
+                                    <input type="file" name="invoice_image" class="form-control" accept="image/*" onchange="previewImage(event)">
+                                    <img id="invoice-image-preview" src="" alt="Image Preview" style="max-width: 100px; max-height: 50px; display: none;" />
                                 </div>
                             </div>
                         </div>
@@ -338,6 +344,16 @@
             $(this).closest('tr').remove();
         });
     });
+
+    function previewImage(event) {
+        const reader = new FileReader();
+        reader.onload = function() {
+            const output = document.getElementById('invoice-image-preview');
+            output.src = reader.result;
+            output.style.display = 'block';
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
 </script>
 @endpush
 
