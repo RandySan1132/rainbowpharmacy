@@ -482,7 +482,10 @@ class SaleController extends Controller
                                     }
                                 }
                                 $purchase->save();
+                                Log::info("Updated stock for purchase_id: {$purchase->id}");
                                 $this->updateStockStatus($purchase->bar_code_id);
+                            } else {
+                                Log::warning("Purchase not found for purchase_id: {$purchaseSale->purchase_id}");
                             }
                         }
                         PurchaseSale::whereIn('id', $purchaseSales->pluck('id'))->delete();
@@ -493,6 +496,7 @@ class SaleController extends Controller
             });
     
             $receipt->delete();
+            Log::info("Deleted receipt_id: {$receipt->id}");
     
             DB::commit();
     

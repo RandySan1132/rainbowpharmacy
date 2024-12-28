@@ -244,7 +244,7 @@
             @elseif($receipt->sales->first()->discount_type == 'fixed-dollar')
                 ${{ number_format($receipt->sales->first()->discount_value, 2) }}
             @elseif($receipt->sales->first()->discount_type == 'fixed-riel')
-                       ៛{{ number_format($receipt->sales->first()->discount_value) }}
+                         ៛{{ number_format($receipt->sales->first()->discount_value) }}
             @endif
         </p>
         <p><strong>សរុប ($):</strong> ${{ number_format($receipt->sales->first()->pay_amount_dollar - $receipt->sales->first()->due_amount_dollar, 2) }}</p>
