@@ -53,23 +53,22 @@
 <script>
     $(document).ready(function() {
         $('#outstock-product').DataTable({
-    processing: true,
-    serverSide: true,
-    ajax: {
-        url: "{{ route('outstock') }}",
-        error: function(xhr, error, code) {
-            console.error('AJAX error:', xhr.responseJSON ? xhr.responseJSON.message : code);
-            alert('Error loading data: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
-        }
-    },
-    columns: [
-        { data: 'product', name: 'product' },
-        { data: 'supplier', name: 'supplier' },
-        { data: 'quantity', name: 'quantity' }
-    ],
-    order: [[2, 'asc']]
-});
-
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: "{{ route('outstock') }}",
+                error: function(xhr, error, code) {
+                    console.error('AJAX error:', xhr.responseJSON ? xhr.responseJSON.message : code);
+                    alert('Error loading data: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
+                }
+            },
+            columns: [
+                { data: 'product', name: 'product' },
+                { data: 'supplier', name: 'supplier' }, // Ensure this matches the server-side data
+                { data: 'quantity', name: 'quantity' }
+            ],
+            order: [[2, 'asc']]
+        });
     });
 </script>
 @endpush

@@ -305,12 +305,12 @@ class ProductController extends Controller
             $outOfStockProducts = Purchase::select('bar_code_id', DB::raw('SUM(quantity) as total_quantity'))
                 ->groupBy('bar_code_id')
                 ->havingRaw('SUM(quantity) = 0') // Only include products with a total quantity of zero
-                ->with(['barCodeData', 'supplier'])
+                ->with(['barCodeData', 'barCodeData.supplier']) // Ensure supplier relationship is loaded
                 ->get();
 
             return DataTables::of($outOfStockProducts)
                 ->addColumn('product', fn($purchase) => $purchase->barCodeData->product_name ?? 'No Product')
-                ->addColumn('supplier', fn($purchase) => $purchase->supplier->name ?? 'No Supplier')
+                ->addColumn('supplier', fn($purchase) => $purchase->barCodeData->supplier->name ?? 'No Supplier') // Correctly fetch supplier name
                 ->addColumn('quantity', fn($purchase) => $purchase->total_quantity ?? 0)
                 ->make(true);
 

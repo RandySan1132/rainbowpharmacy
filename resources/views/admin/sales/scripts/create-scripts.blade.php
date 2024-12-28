@@ -319,10 +319,10 @@
                 item.quantity = product.box_stock;
             }
 
-            if (item.sale_by === 'pill' && item.quantity > totalPillStock) {
-                alert('Not enough pill stock available.');
-                item.quantity = totalPillStock;
-            }
+            // if (item.sale_by === 'pill' && item.quantity > totalPillStock) {
+            //     alert('Not enough pill stock available.');
+            //     item.quantity = totalPillStock;
+            // }
         }
 
         // Initial calculation of totals

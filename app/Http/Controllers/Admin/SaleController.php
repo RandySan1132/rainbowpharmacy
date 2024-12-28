@@ -37,6 +37,10 @@ class SaleController extends Controller
                 'purchases as pill_stock' => function ($query) {
                     $query->whereDate('expiry_date', '>', DB::raw('CURDATE()'))
                           ->select(DB::raw('SUM(pill_amount * quantity)'));
+                },
+                'purchases as leftover_pill_stock' => function ($query) {
+                    $query->whereDate('expiry_date', '>', DB::raw('CURDATE()'))
+                          ->select(DB::raw('SUM(leftover_pills)'));
                 }
             ])
             ->with(['purchases' => function($query) {
@@ -203,10 +207,19 @@ class SaleController extends Controller
                     }
                 } elseif ($saleBy === 'pill') {
                     foreach ($purchases as $purchase) {
+                        // Sum leftover pills regardless of box quantity
                         $availableStock += ($purchase->quantity * $purchase->pill_amount) + $purchase->leftover_pills;
+                        Log::info('Calculating available pill stock:', [
+                            'purchase_id' => $purchase->id,
+                            'quantity' => $purchase->quantity,
+                            'pill_amount' => $purchase->pill_amount,
+                            'leftover_pills' => $purchase->leftover_pills,
+                            'current_available_stock' => $availableStock
+                        ]);
                     }
-                    Log::info('Available pill stock:', ['product_id' => $barCodeId, 'available_stock' => $availableStock]);
+                    Log::info('Total available pill stock:', ['product_id' => $barCodeId, 'available_stock' => $availableStock]);
                     if ($availableStock < $quantity) {
+                        Log::warning("Insufficient pill stock for product: {$product->product_name}. Requested: {$quantity}, Available: {$availableStock}");
                         throw new \Exception("Not enough pill stock for product: {$product->product_name}");
                     }
                 }
@@ -227,17 +240,29 @@ class SaleController extends Controller
                     if ($saleBy === 'box') {
                         // Convert purchase->quantity (boxes) to a usable integer
                         $currentBoxes = (int) $purchase->quantity;
-                        if ($currentBoxes <= 0) {
-                            continue;
-                        }
+                        // Removed the check: if ($currentBoxes <= 0) { continue; }
 
+                        // Deduct boxes first
                         $deductedBoxes = min($currentBoxes, $remainingQuantity);
                         Log::info('Deducting boxes:', ['purchase_id' => $purchase->id, 'deducted_boxes' => $deductedBoxes]);
                         $purchase->quantity = $currentBoxes - $deductedBoxes;
                         $purchase->save();
-
                         $remainingQuantity -= $deductedBoxes;
                         $totalDeductedQuantity += $deductedBoxes;
+
+                        // If boxes hit zero but leftover pills remain, use leftover pills
+                        while ($remainingQuantity > 0 && $purchase->leftover_pills > 0) {
+                            $deductedPills = min($purchase->leftover_pills, $remainingQuantity);
+                            $purchase->leftover_pills -= $deductedPills;
+                            $purchase->save();
+                            $remainingQuantity -= $deductedPills;
+                            $totalDeductedQuantity += $deductedPills;
+                            Log::info('Used leftover pills in box scenario:', [
+                                'purchase_id' => $purchase->id,
+                                'deducted_pills' => $deductedPills,
+                                'remainingQuantity' => $remainingQuantity
+                            ]);
+                        }
 
                     } elseif ($saleBy === 'pill') {
                         // Use a while loop to allow multiple unbox attempts from the same purchase
@@ -286,7 +311,7 @@ class SaleController extends Controller
                             // Unbox if leftover pills are not sufficient
                             if ($remainingQuantity > 0 && $purchase->quantity > 0) {
                                 $purchase->quantity -= 1;
-                                $purchase->leftover_pills = $purchase->pill_amount;
+                                $purchase->leftover_pills += $purchase->pill_amount;
                                 $purchase->save();
 
                                 Log::info('Unboxed a box:', [
@@ -295,13 +320,16 @@ class SaleController extends Controller
                                     'new_leftover_pills' => $purchase->leftover_pills
                                 ]);
                             } else {
-                                break; // No more boxes left
+                                Log::info('No more boxes or leftover pills to unbox for purchase_id: ' . $purchase->id);
+                                // Changed from 'break;' to 'continue;' so it moves on to the next purchase
+                                continue;
                             }
                         }
                     }
                 }
 
                 if ($remainingQuantity > 0) {
+                    Log::warning("Not enough stock after deductions for product: {$product->product_name}. Remaining Quantity: {$remainingQuantity}");
                     throw new \Exception("Not enough stock for product: {$product->product_name}");
                 }
 

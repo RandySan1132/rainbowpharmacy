@@ -83,16 +83,29 @@ class DashboardController extends Controller
                     "data" => $purchaseData
                 ]
             ])
-            ->options([]);
+            ->options([
+                'scales' => [
+                    'yAxes' => [
+                        [
+                            'ticks' => [
+                                'beginAtZero' => true,
+                                'max' => 1000 // Adjust this value to set the top number
+                            ]
+                        ]
+                    ]
+                ]
+            ]);
 
-        // Modify bestSales to filter by selected month
+        // Modify bestSales to filter by selected month and sold by box
         $bestSales = Sale::select('bar_code_data.product_name', DB::raw('SUM(sales.quantity) as total_quantity'))
             ->join('bar_code_data', 'sales.bar_code_id', '=', 'bar_code_data.id')
+            ->join('categories', 'bar_code_data.category_id', '=', 'categories.id') // Join categories using bar_code_data.category_id
+            ->where('sales.sale_by', 'box') // Use 'sale_by' column to filter sales by box
             ->whereMonth('sales.created_at', $startOfMonth->month)
             ->whereYear('sales.created_at', $startOfMonth->year)
             ->groupBy('bar_code_data.product_name')
             ->orderBy('total_quantity', 'desc')
-            ->take(5)
+            ->take(20)
             ->pluck('total_quantity', 'bar_code_data.product_name');
 
         $bestSalesChart = app()->chartjs
@@ -106,7 +119,18 @@ class DashboardController extends Controller
                     "data" => $bestSales->values()->toArray() // Convert collection to array
                 ]
             ])
-            ->options([]);
+            ->options([
+                'scales' => [
+                    'yAxes' => [
+                        [
+                            'ticks' => [
+                                'beginAtZero' => true,
+                                'max' => 100 // Adjust this value to set the top number
+                            ]
+                        ]
+                    ]
+                ]
+            ]);
 
         // Fetch low stock notifications
         $low_stock_notifications = DatabaseNotification::where('type', LowStockNotification::class)

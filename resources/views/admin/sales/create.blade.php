@@ -37,12 +37,20 @@
             <div class="card-body" style="padding-top: 50px;">
                 <div class="row" id="product-grid">
                     @foreach($products as $product)
+                    @php
+                        $isOutOfStock = (
+                            ($product->box_stock <= 0) &&
+                            ($product->pill_stock <= 0) &&
+                            ($product->leftover_pill_stock <= 0)
+                        );
+                    @endphp
                     <div class="col-md-2 mb-4">
-                        <div class="card product-card {{ ($product->box_stock ?? 0) == 0 && ($product->pill_stock ?? 0) == 0 ? 'out-of-stock' : '' }}" 
+                        <div class="card product-card {{ $isOutOfStock ? 'out-of-stock' : '' }}" 
                             data-id="{{ $product->id }}" 
                             data-category="{{ $product->category_id }}" 
                             data-box-stock="{{ $product->box_stock ?? 0 }}" 
                             data-pill-stock="{{ $product->pill_stock ?? 0 }}" 
+                            data-leftover-pill-stock="{{ $product->leftover_pill_stock ?? 0 }}" 
                             data-barcode="{{ $product->bar_code }}">
                             <img src="{{ asset('storage/purchases/' . $product->image) }}" class="card-img-top" alt="{{ $product->product_name }}">
                             <div class="card-body text-center" style="padding: 10px; position: relative;">
@@ -52,7 +60,7 @@
                                     ${{ number_format($product->price, 2) }}<br>
                                     {{ number_format($product->price * 4100, 0) }}៛
                                 </p>
-                                @if(($product->box_stock ?? 0) == 0 && ($product->pill_stock ?? 0) == 0)
+                                @if($isOutOfStock)
                                 <span class="badge badge-danger">Out of Stock</span>
                                 @endif
                             </div>
