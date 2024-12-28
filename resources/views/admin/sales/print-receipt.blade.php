@@ -244,7 +244,7 @@
             @elseif($receipt->sales->first()->discount_type == 'fixed-dollar')
                 ${{ number_format($receipt->sales->first()->discount_value, 2) }}
             @elseif($receipt->sales->first()->discount_type == 'fixed-riel')
-                      ៛{{ number_format($receipt->sales->first()->discount_value) }}
+                       ៛{{ number_format($receipt->sales->first()->discount_value) }}
             @endif
         </p>
         <p><strong>សរុប ($):</strong> ${{ number_format($receipt->sales->first()->pay_amount_dollar - $receipt->sales->first()->due_amount_dollar, 2) }}</p>
@@ -280,6 +280,8 @@ document.querySelector('.delete-btn').addEventListener('click', function() {
     let invoiceId = this.getAttribute('data-id');
     let deleteRoute = this.getAttribute('data-route');
 
+    console.log('Attempting to delete sale with invoice ID:', invoiceId); // Add this line
+
     if (confirm('Are you sure you want to delete this sale?')) {
         fetch(deleteRoute, {
             method: 'DELETE',
@@ -290,6 +292,7 @@ document.querySelector('.delete-btn').addEventListener('click', function() {
         })
         .then(response => response.json())
         .then(data => {
+            console.log('Delete response:', data); // Add this line
             if (data.success) {
                 alert(data.message);
                 window.location.href = '{{ route('sales.index') }}';
@@ -298,6 +301,7 @@ document.querySelector('.delete-btn').addEventListener('click', function() {
             }
         })
         .catch(error => {
+            console.error('Delete error:', error); // Add this line
             alert('Failed to delete the sale.');
         });
     }

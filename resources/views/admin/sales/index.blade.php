@@ -75,6 +75,8 @@ $(document).ready(function() {
         let invoiceId = $(this).data('id'); // Use 'invoice_id' instead of 'sale_id'
         let deleteRoute = $(this).data('route');
 
+        console.log('Attempting to delete sale with invoice ID:', invoiceId); // Add this line
+
         if (confirm('Are you sure you want to delete this sale?')) {
             $.ajax({
                 url: deleteRoute,
@@ -83,6 +85,7 @@ $(document).ready(function() {
                     _token: '{{ csrf_token() }}',
                 },
                 success: function(response) {
+                    console.log('Delete response:', response); // Add this line
                     if (response.success) {
                         $('#salesTable').DataTable().ajax.reload();
                         alert(response.message);
@@ -91,6 +94,7 @@ $(document).ready(function() {
                     }
                 },
                 error: function(xhr) {
+                    console.error('Delete error:', xhr); // Add this line
                     alert('Failed to delete the sale.');
                 }
             });
