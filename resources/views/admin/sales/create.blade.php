@@ -136,7 +136,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="productDetailModalLabel">Product Details</h5>
+                <h5 class="modal-title khmer-text" id="productDetailModalLabel">តាមដានស្តុកទំនិញ</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="font-size: 1.5rem;">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -147,8 +147,8 @@
                 </div>
                 <h5 id="product-detail-name" class="text-center font-weight-bold mb-3">Product Name</h5>
                 <div class="text-center mb-3" style="font-size: 1.25rem; font-weight: bold; border: 1px solid #e0e0e0; padding: 15px; border-radius: 10px; background-color: #f9f9f9;">
-    <p style="margin: 0; color: #333;">
-        <strong>Price:</strong>
+    <p style="margin: 0; color: #333;" class="khmer-text">
+        <strong>តម្លៃ:</strong>
     </p>
     <p style="margin: 5px 0; font-size: 1.75rem; font-weight: bold; color: #007bff;">
         <span id="product-detail-price">0.00</span>$
@@ -158,11 +158,11 @@
     </p>
 </div>
 
-                <p><strong>Shelf:</strong> <span id="product-detail-shelf" style="color: #007bff;">A1</span></p>
-                <p><strong>Box Stock:</strong> <span id="product-detail-box-stock" style="color: #28a745;">50</span></p>
-                <p><strong>Pill Stock:</strong> <span id="product-detail-pill-stock" style="color: #28a745;">48</span></p>
+                <p class="khmer-text"><strong>ធ្នើ:</strong> <span id="product-detail-shelf" style="color: #007bff;">A1</span></p>
+                <p class="khmer-text"><strong>ស្តុកប្រអប់:</strong> <span id="product-detail-box-stock" style="color: #28a745;">50</span></p>
+                <p class="khmer-text"><strong>ស្តុកគ្រាប់ថ្នាំ:</strong> <span id="product-detail-pill-stock" style="color: #28a745;">48</span></p>
                 {{-- Add Leftover Pill --}}
-                <p><strong>Leftover Pill:</strong> <span id="product-detail-leftover-pill" style="color: #28a745;">200</span></p>
+                <p class="khmer-text"><strong>គ្រាប់ថ្នាំនៅក្រៅប្រអប់:</strong> <span id="product-detail-leftover-pill" style="color: #28a745;">200</span></p>
             </div>
         </div>
     </div>
@@ -173,25 +173,25 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add Medicine Product</h5>
+                <h5 class="modal-title khmer-text">បញ្ចូលទំនិញថ្នាំឳសថ</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body">
                 <h5 id="medicine-product-name"></h5>
-                <p><strong>Available Stock:</strong> <span id="medicine-product-stock"></span></p>
+                <p class="khmer-text"><strong>នៅក្នុងស្តុក:</strong> <span id="medicine-product-stock"></span></p>
                 <img id="medicine-product-image" src="" class="img-fluid mb-3" alt="Product Image">
                 <div class="form-group">
-                    <label>Sale By</label>
-                    <select id="medicine-sale-by" class="form-control">
-                        <option value="box">Box</option>
-                        <option value="pill">Pill</option>
+                    <label class="khmer-text">លក់ដោយ</label>
+                    <select id="medicine-sale-by" class="form-control khmer-text">
+                        <option value="box">ប្រអប់</option>
+                        <option value="pill">គ្រាប់ថ្នាំ</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Quantity</label>
+                    <label class="khmer-text">ចំនួន</label>
                     <input type="number" id="medicine-quantity" class="form-control" value="1" min="1">
                 </div>
-                <button type="button" class="btn btn-primary" id="add-medicine-to-cart">Add to Cart</button>
+                <button type="button" class="btn btn-primary khmer-text" id="add-medicine-to-cart">ដាក់ចូលកន្ត្រក</button>
             </div>
         </div>
     </div>

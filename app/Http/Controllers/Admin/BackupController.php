@@ -13,6 +13,7 @@ use Exception;
 use League\Flysystem\Adapter\Local;
 use Illuminate\Support\Facades\DB; // Add this import
 use GuzzleHttp\Client; // Add this import
+use ZipArchive; // Add this import
 
 class BackupController extends Controller
 {
@@ -25,6 +26,7 @@ class BackupController extends Controller
     {
         $title = 'backups';
         $this->data['backups'] = [];
+        $this->data['storageBackups'] = [];
         $disk = Storage::disk('local');
         $files = $disk->allFiles('backups');
 
@@ -33,6 +35,17 @@ class BackupController extends Controller
             // only take the sql files into account
             if (substr($f, -4) == '.sql' && $disk->exists($f)) {
                 $this->data['backups'][] = [
+                    'file_path'     => $f,
+                    'file_name'     => str_replace('backups/', '', $f),
+                    'file_size'     => $disk->size($f),
+                    'last_modified' => $disk->lastModified($f),
+                    'disk'          => 'local',
+                    'download'      => true,
+                ];
+            }
+            // only take the zip files into account
+            if (substr($f, -4) == '.zip' && $disk->exists($f)) {
+                $this->data['storageBackups'][] = [
                     'file_path'     => $f,
                     'file_name'     => str_replace('backups/', '', $f),
                     'file_size'     => $disk->size($f),
@@ -261,6 +274,49 @@ class BackupController extends Controller
             Log::error('SQL file content: ' . $sqlContent);
             Log::error('Stack trace: ' . $e->getTraceAsString());
             return back()->withErrors(['error' => 'Error importing database: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Backup the entire storage folder.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function backupStorage()
+    {
+        try {
+            $storagePath = storage_path('app');
+            $backupFile = storage_path("storage-backup-" . date('Y-m-d_H-i-s') . ".zip");
+
+            $zip = new ZipArchive;
+            if ($zip->open($backupFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($storagePath), \RecursiveIteratorIterator::LEAVES_ONLY);
+
+                foreach ($files as $name => $file) {
+                    if (!$file->isDir()) {
+                        $filePath = $file->getRealPath();
+                        $relativePath = substr($filePath, strlen($storagePath) + 1);
+                        $zip->addFile($filePath, $relativePath);
+                    }
+                }
+
+                $zip->close();
+                Log::info('Storage folder backup created successfully.');
+
+                // Send the file to Telegram
+                Log::info('Sending storage backup to Telegram...');
+                $this->sendToTelegram($backupFile);
+                Log::info('Storage backup sent to Telegram.');
+
+                return back()->with('success', 'Storage folder backup created and sent to Telegram successfully.');
+            } else {
+                Log::error('Failed to open zip file for writing: ' . $backupFile);
+                throw new Exception('Failed to create storage folder backup.');
+            }
+        } catch (Exception $e) {
+            Log::error('Exception: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            return back()->withErrors(['error' => 'Error creating storage folder backup: ' . $e->getMessage()]);
         }
     }
 

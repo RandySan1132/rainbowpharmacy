@@ -66,11 +66,11 @@
     <a href="#"><i class="fe fe-star-o"></i> <span class="khmer-text"> ទំនិញទិញចូល</span> <span class="fas fa-chevron-down"></span></a>
     <ul style="display: none;">
         <li>
-            <a class="{{ route_is('purchases.index') ? 'active' : '' }}" href="{{route('purchases.index')}}"><span class="khmer-text">បញ្ជីទំនិញទិញចូល</span></a>
+            <a class="{{ route_is('purchases.index') ? 'active' : '' }}" href="{{route('purchases.index')}}"><span class="khmer-text">បញ្ជីទំនិញ</span></a>
         </li>
         @can('create-purchase')
         <li>
-            <a class="{{ route_is('purchases.create') ? 'active' : '' }}" href="{{route('purchases.create')}}"><span class="khmer-text">បញ្ចូលទំនិញទិញចូល</span></a>
+            <a class="{{ route_is('purchases.create') ? 'active' : '' }}" href="{{route('purchases.create')}}"><span class="khmer-text">បញ្ចូលស្តុក</span></a>
         </li>
         @endcan
     </ul>

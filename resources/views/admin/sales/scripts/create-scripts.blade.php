@@ -14,7 +14,7 @@
             let totalLeftoverPills = product.purchases.reduce((sum, purchase) => sum + (purchase.leftover_pills ?? 0), 0);
             $('#medicine-product-name').text(product.product_name);
             $('#medicine-product-stock').text(
-                `${product.box_stock ?? 0} boxes, ${product.pill_stock ?? 0} pills, ${totalLeftoverPills} leftover pills`
+                `${product.box_stock ?? 0} ប្រអប់, ${product.pill_stock ?? 0} គ្រាប់ថ្នាំ, ${totalLeftoverPills} គ្រាប់ថ្នាំនៅក្រៅប្រអប់`
             );
             $('#medicine-product-image')
                 .attr('src', '{{ asset("storage/purchases/") }}/' + product.image)
@@ -180,7 +180,8 @@
                 let productImage = `{{ asset('storage/purchases/') }}/${item.image}`;
                 let saleTypeText = '';
                 if (item.category_id == {{ $medicineCategoryId }}) {
-                    saleTypeText = `<div class="sale-type">Sale by: ${item.sale_by}</div>`;
+                    let saleTypeKhmer = item.sale_by === 'box' ? 'លក់ដោយ​: ប្រអប់' : 'លក់ដោយ: គ្រាប់ថ្នាំ';
+                    saleTypeText = `<div class="sale-type khmer-text">${saleTypeKhmer}</div>`;
                 }
 
                 cartItemsContainer.append(`

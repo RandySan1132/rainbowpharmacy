@@ -13,6 +13,10 @@
         @csrf
         <button class="btn btn-primary mt-2" type="submit">Export DB SQL to Telegram</button>
     </form>
+    <form action="{{ route('backup.storage') }}" method="get" class="float-right mr-2">
+        @csrf
+        <button class="btn btn-primary mt-2" type="submit">Backup Storage Folder</button>
+    </form>
     <form action="{{ route('backup.import') }}" method="POST" enctype="multipart/form-data" class="float-right mr-2">
         @csrf
         <input type="file" name="sql_file" accept=".sql" required>

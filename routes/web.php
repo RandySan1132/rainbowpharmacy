@@ -101,6 +101,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function(){
     Route::get('sales/bare-receipt/{id}', [ReceiptController::class, 'bareReceipt'])->name('admin.sales.bareReceipt');
 
     Route::post('admin/clear-log', [SettingController::class, 'clearLog'])->name('clear.log');
+
+    Route::get('backup/storage', [App\Http\Controllers\Admin\BackupController::class, 'backupStorage'])->name('backup.storage');
 });
 
 // Add the test route outside the auth middleware group
