@@ -19,6 +19,8 @@ use App\Notifications\LowStockNotification;
 use Spatie\Permission\Models\Role; // Ensure you have this import at the top
 use App\Models\BoxInventory; // Ensure you have this import at the top
 use Carbon\Carbon; // Ensure you have this import
+use App\Services\TelegramService; // Ensure you have this import at the top
+use Illuminate\Support\Facades\Storage; // Ensure you have this import at the top
 
 class PurchaseController extends Controller
 {
@@ -110,17 +112,15 @@ class PurchaseController extends Controller
                 throw new \Exception('Duplicate products are not allowed in a single purchase.');
             }
 
-// Handle invoice image upload
-$invoiceImagePath = null;
-if ($request->hasFile('invoice_image')) {
-    // Store the file in 'public/storage/purchases' (mapped to 'storage/app/public/purchases')
-    $invoiceImagePath = $request->file('invoice_image')->storeAs(
-        'public/purchases', // This will save the file in storage/app/public/purchases
-        $request->file('invoice_image')->getClientOriginalName()
-    );
-}
+            // Handle invoice image upload
+            if ($request->hasFile('invoice_image')) {
+                $invoiceImage = $request->file('invoice_image');
+                $invoiceImagePath = $invoiceImage->store('purchases', 'public');
+                $invoiceImageFilename = basename($invoiceImagePath); // Extract the filename
+            } else {
+                $invoiceImageFilename = null;
+            }
 
-    
             foreach ($productIds as $index => $productId) {
                 // Fetch product details from the bar_code_data table
                 $product = BarCodeData::findOrFail($productId);
@@ -130,7 +130,7 @@ if ($request->hasFile('invoice_image')) {
                 $pillAmount = ($categoryName === 'medicine' && $product->pill_amount !== null)
                     ? $product->pill_amount
                     : 0;
-    
+
                 // Log the values being set
                 Log::info('Creating purchase', [
                     'bar_code_id' => $product->id,
@@ -145,7 +145,7 @@ if ($request->hasFile('invoice_image')) {
                     'original_pill_amount' => $pillAmount,
                     'total_pill_amount' => ($pillAmount !== null) ? ($request->box_qty[$index] ?? 0) * $pillAmount : null,
                 ]);
-    
+
                 $expiryDateValue = $request->expiry_date[$index] ?? null;
                 $nearExpiryDateValue = $expiryDateValue
                     ? Carbon::parse($expiryDateValue)->subDays(7)->toDateString()
@@ -176,7 +176,7 @@ if ($request->hasFile('invoice_image')) {
                     'purchase_id' => $purchase->id,
                     'near_expiry_date' => $purchase->near_expiry_date,
                 ]);
-    
+
                 // Store invoice details in purchase_details table
                 PurchaseDetail::create([
                     'purchase_id' => $purchase->id,
@@ -184,9 +184,9 @@ if ($request->hasFile('invoice_image')) {
                     'invoice_no' => $request->invoice_no,
                     'date' => $request->date,
                     'total_purchase_price' => $request->total_purchase_price[$index] ?? 0,
-                    'invoice_image' => $invoiceImagePath ? basename($invoiceImagePath) : null, // Ensure this line is present
+                    'invoice_image' => $invoiceImageFilename, // Store only the filename
                 ]);
-    
+
                 // Create entries in the box_inventories table only for medicine products
                 if ($product->category->name == 'medicine') {
                     for ($i = 0; $i < $purchase->quantity; $i++) {
@@ -196,28 +196,31 @@ if ($request->hasFile('invoice_image')) {
                         ]);
                     }
                 }
-    
+
                 // Update stock status for each product after creating BoxInventory
                 $this->updateStockStatus($product->id);
             }
         });
-    
+
         return redirect()->route('admin.purchases.index')->with('success', 'Purchase added successfully.');
     }
-    
-
-
 
     public function edit($id)
     {
-        $purchase = Purchase::with('purchaseDetails')->findOrFail($id);
-        $invoice_no = $purchase->purchaseDetails->first()->invoice_no ?? '';
-        $purchases = Purchase::whereHas('purchaseDetails', function ($query) use ($invoice_no) {
-            $query->where('invoice_no', $invoice_no);
-        })->get();
-
-        return view('admin.purchases.edit', compact('purchases'));
+        try {
+            Log::info("Edit method called for purchase ID: {$id}");
+            $purchase = Purchase::with('purchaseDetails')->findOrFail($id);
+            $suppliers = Supplier::all();
+            $categories = Category::all();
+            Log::info("Purchase found: ID = {$purchase->id}");
+    
+            return view('admin.purchases.edit', compact('purchase', 'suppliers', 'categories'));
+        } catch (\Exception $e) {
+            Log::error("Error in edit method for purchase ID {$id}: {$e->getMessage()}");
+            return redirect()->route('admin.purchases.index')->with('error', 'Failed to load purchase details.');
+        }
     }
+
 
     public function update(Request $request, Purchase $purchase)
     {
@@ -398,6 +401,13 @@ if ($request->hasFile('invoice_image')) {
                                      ->with(['barCodeData', 'category', 'supplier'])
                                      ->get();
 
+                // Send Telegram notification for expired products
+                foreach ($purchases as $purchase) {
+                    if ($purchase->expiry_date < $now) {
+                        TelegramService::sendExpiredProductAlert($purchase);
+                    }
+                }
+
                 $dataTable = DataTables::of($purchases)
                     ->addColumn('product', function ($purchase) {
                         $product = $purchase->barCodeData;
@@ -468,11 +478,18 @@ if ($request->hasFile('invoice_image')) {
             $product->in_stock = $totalStock > 0 ? 1 : 0; // Ensure it's set to 1 or 0
             $product->save();
 
+            // Log stock status
+            Log::info("Stock status for product {$product->product_name}: {$totalStock}");
+
             // If stock is 5 or below, create a notification
             if ($totalStock <= 5) {
                 // Notify users with the 'super-admin' role
                 $admins = User::role('super-admin')->get();
                 Notification::send($admins, new LowStockNotification($product, $totalStock));
+
+                // Log low stock notification
+                Log::info("Sending low stock alert for product {$product->product_name}");
+                TelegramService::sendLowStockAlert($product, $totalStock);
             }
         }
     }
@@ -491,6 +508,9 @@ if ($request->hasFile('invoice_image')) {
             // Update stock status if needed (e.g., mark as out of stock)
             BarCodeData::where('id', $purchase->bar_code_id)
                 ->update(['in_stock' => 0]); // Make sure 'in_stock' exists as a column if using it
+            // Log out of stock notification
+            Log::info("Sending out of stock alert for product {$purchase->barCodeData->product_name}");
+            TelegramService::sendOutOfStockAlert($purchase->bar_code_id);
         } else {
             // Mark as in stock if quantity is above 0
             BarCodeData::where('id', $purchase->bar_code_id)
@@ -512,10 +532,7 @@ if ($request->hasFile('invoice_image')) {
 
         return response()->json(['success' => false, 'message' => 'Product not found.'], 404);
     }
-    public function viewByInvoice($invoice_no)
-    {
-        $purchases = Purchase::where('invoice_no', $invoice_no)->get();
-        return view('admin.purchases.view', compact('purchases'));
-    }
+
 }
+
 
