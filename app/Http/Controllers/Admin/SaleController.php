@@ -509,6 +509,58 @@ class SaleController extends Controller
     }
     
     
+    public function manualDelete($invoice_id)
+    {
+        try {
+            Log::info('Manually attempting to delete sales for invoice_id: ' . $invoice_id);
+
+            $receipt = Receipt::where('invoice_id', $invoice_id)->first();
+
+            if (!$receipt) {
+                throw new \Exception("No receipt found for invoice_id: {$invoice_id}");
+            }
+
+            Log::info('Receipt found: ' . $receipt->id);
+
+            Sale::where('invoice_id', $invoice_id)->chunk(100, function($sales) {
+                foreach ($sales as $sale) {
+                    Log::info("Processing sale_id: {$sale->id}");
+                    PurchaseSale::where('sale_id', $sale->id)->chunk(100, function($purchaseSales) {
+                        foreach ($purchaseSales as $purchaseSale) {
+                            $purchase = Purchase::find($purchaseSale->purchase_id);
+                            if ($purchase) {
+                                if ($purchaseSale->sale_by === 'box') {
+                                    $purchase->quantity += $purchaseSale->quantity;
+                                } else {
+                                    $purchase->leftover_pills += $purchaseSale->quantity;
+                                    while ($purchase->leftover_pills >= $purchase->pill_amount) {
+                                        $purchase->quantity += 1;
+                                        $purchase->leftover_pills -= $purchase->pill_amount;
+                                    }
+                                }
+                                $purchase->save();
+                                Log::info("Updated stock for purchase_id: {$purchase->id}");
+                                $this->updateStockStatus($purchase->bar_code_id);
+                            } else {
+                                Log::warning("Purchase not found for purchase_id: {$purchaseSale->purchase_id}");
+                            }
+                        }
+                        PurchaseSale::whereIn('id', $purchaseSales->pluck('id'))->delete();
+                    });
+                    $sale->forceDelete();
+                    Log::info("Force-deleted sale_id: {$sale->id}");
+                }
+            });
+
+            $receipt->delete();
+            Log::info("Deleted receipt_id: {$receipt->id}");
+
+            return redirect()->route('sales.index')->with('success', 'Sale deleted and stock returned successfully.');
+        } catch (\Exception $e) {
+            Log::error('Failed to delete sale: ' . $e->getMessage());
+            return redirect()->route('sales.index')->with('error', 'Failed to delete sale: ' . $e->getMessage());
+        }
+    }
     
     public function update(Request $request, $id)
     {

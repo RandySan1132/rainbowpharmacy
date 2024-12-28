@@ -64,6 +64,7 @@ $(document).ready(function() {
                 return `
                     <a href="{{ url('admin/receipt/print/${row.invoice_id}') }}" class="btn btn-sm btn-primary"><i class="fa fa-eye"></i> View Receipt</a>
                     <button class="btn btn-sm btn-danger delete-btn" data-id="${row.invoice_id}" data-route="{{ url('admin/sales/${row.invoice_id}') }}"><i class="fa fa-trash"></i></button>
+                    <a href="{{ url('admin/sales/manual-delete/${row.invoice_id}') }}" class="btn btn-sm btn-warning"><i class="fa fa-exclamation-triangle"></i> Manual Delete</a>
                 `;
             }},
         ],
