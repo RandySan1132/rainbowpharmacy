@@ -107,6 +107,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function(){
     Route::get('backup/storage', [App\Http\Controllers\Admin\BackupController::class, 'backupStorage'])->name('backup.storage');
 
     Route::delete('/admin/sales/manual-delete/{invoice_id}', [App\Http\Controllers\Admin\SaleController::class, 'manualDelete'])->name('sales.manualDelete');
+    Route::delete('/sales/manual-delete/{invoice_id}', [App\Http\Controllers\Admin\SaleController::class, 'manualDelete'])->name('sales.manualDelete');
 });
 
 // Add the test route outside the auth middleware group
