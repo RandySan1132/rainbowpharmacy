@@ -57,8 +57,8 @@ Route::middleware(['auth'])->prefix('admin')->group(function(){
     Route::post('purchases/reports', [PurchaseController::class, 'generateReport'])->name('purchases.generateReport');
     Route::get('/admin/purchases', [PurchaseController::class, 'index'])->name('admin.purchases.index');
     Route::delete('/admin/purchases/{id}', [PurchaseController::class, 'destroy'])->name('purchases.destroy');
-    Route::get('/purchases/get-barcode-data', [PurchaseController::class, 'getBarcodeData'])->name('purchases.getBarcodeData');
-    Route::get('/purchases/get-supplier-products', [PurchaseController::class, 'getSupplierProducts'])->name('purchases.getSupplierProducts');
+    Route::get('purchases/get-barcode-data', [PurchaseController::class, 'getBarcodeData'])->name('purchases.getBarcodeData');
+    Route::get('purchases/get-supplier-products', [PurchaseController::class, 'getSupplierProducts'])->name('purchases.getSupplierProducts');
     Route::get('/expired', [PurchaseController::class, 'expired'])->name('expired');
 
     Route::resource('products',ProductController::class)->except('show');
@@ -107,7 +107,7 @@ Route::middleware(['auth'])->prefix('admin')->group(function(){
     Route::get('backup/storage', [App\Http\Controllers\Admin\BackupController::class, 'backupStorage'])->name('backup.storage');
 
     Route::delete('/admin/sales/manual-delete/{invoice_id}', [App\Http\Controllers\Admin\SaleController::class, 'manualDelete'])->name('sales.manualDelete');
-    Route::get('/sales/manual-delete/{invoice_id}', [App\Http\Controllers\Admin\SaleController::class, 'manualDelete'])->name('sales.manualDelete');
+    Route::delete('/sales/manual-delete/{invoice_id}', [App\Http\Controllers\Admin\SaleController::class, 'manualDelete'])->name('sales.manualDelete');
 });
 
 // Add the test route outside the auth middleware group

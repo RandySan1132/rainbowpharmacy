@@ -468,17 +468,17 @@ class SaleController extends Controller
             Sale::where('invoice_id', $invoice_id)->chunk(100, function($sales) {
                 foreach ($sales as $sale) {
                     Log::info("Processing sale_id: {$sale->id}");
-                    PurchaseSale::where('sale_id', $sale->id)->chunk(100, function($purchaseSales) {
+                    PurchaseSale::where('sale_id', $sale->id)->chunk(100, function($purchaseSales) use ($sale) {
                         foreach ($purchaseSales as $purchaseSale) {
                             $purchase = Purchase::find($purchaseSale->purchase_id);
                             if ($purchase) {
-                                if ($purchaseSale->sale_by === 'box') {
-                                    $purchase->quantity += $purchaseSale->quantity;
-                                } else {
-                                    $purchase->leftover_pills += $purchaseSale->quantity;
+                                if ($sale->sale_by === 'box') {
+                                    $purchase->quantity += $sale->quantity;
+                                } else if ($sale->sale_by === 'pill') {
+                                    $purchase->leftover_pills += $sale->quantity;
                                     while ($purchase->leftover_pills >= $purchase->pill_amount) {
-                                        $purchase->quantity += 1;
                                         $purchase->leftover_pills -= $purchase->pill_amount;
+                                        $purchase->quantity++;
                                     }
                                 }
                                 $purchase->save();
@@ -525,17 +525,17 @@ class SaleController extends Controller
             Sale::where('invoice_id', $invoice_id)->chunk(100, function($sales) {
                 foreach ($sales as $sale) {
                     Log::info("Processing sale_id: {$sale->id}");
-                    PurchaseSale::where('sale_id', $sale->id)->chunk(100, function($purchaseSales) {
+                    PurchaseSale::where('sale_id', $sale->id)->chunk(100, function($purchaseSales) use ($sale) {
                         foreach ($purchaseSales as $purchaseSale) {
                             $purchase = Purchase::find($purchaseSale->purchase_id);
                             if ($purchase) {
-                                if ($purchaseSale->sale_by === 'box') {
-                                    $purchase->quantity += $purchaseSale->quantity;
-                                } else {
-                                    $purchase->leftover_pills += $purchaseSale->quantity;
+                                if ($sale->sale_by === 'box') {
+                                    $purchase->quantity += $sale->quantity;
+                                } else if ($sale->sale_by === 'pill') {
+                                    $purchase->leftover_pills += $sale->quantity;
                                     while ($purchase->leftover_pills >= $purchase->pill_amount) {
-                                        $purchase->quantity += 1;
                                         $purchase->leftover_pills -= $purchase->pill_amount;
+                                        $purchase->quantity++;
                                     }
                                 }
                                 $purchase->save();
